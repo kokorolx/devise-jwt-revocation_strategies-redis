@@ -24,9 +24,8 @@ module Devise
             raise ArgumentError, 'jti cannot be nil' if jti.nil? || jti.empty?
             raise ArgumentError, 'exp cannot be nil' if exp.nil?
 
-            redis_key = "jwt:#{jti}"
-            redis_value = { user_id: user_id }.to_json
-            $redis_auth.set(redis_key, redis_value)
+            redis_key = "jwt:#{user_id}"
+            $redis_auth.sadd(redis_key, jti)
             $redis_auth.expireat(redis_key, exp)
           end
         end

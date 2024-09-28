@@ -4,9 +4,8 @@ require 'devise/jwt/revocation_strategies/redis' # Adjust the require path as ne
 require 'redis'
 
 RSpec.describe Devise::Jwt::RevocationStrategies::Redis do
-  let(:user) { double('User', id: 1) }
-  let(:payload) { { 'jti' => 'some_unique_identifier' } }
-  let(:payload2) { { 'jti' => 'some_unique_identifier' } }
+  let(:user) { double('User', id: 123) }
+  let(:payload) { { 'jti' => '123', 'sub' => 'user_id', 'exp' => Time.now.to_i + 3600 } }
 
   it "has a version number" do
     expect(Devise::Jwt::RevocationStrategies::Redis::VERSION).not_to be nil
@@ -15,15 +14,13 @@ RSpec.describe Devise::Jwt::RevocationStrategies::Redis do
   before do
     # Stub the Redis connection
     $redis_auth = Redis.new(url: ENV.fetch('REDIS_AUTH_URL', 'redis://localhost:6379/0'))
-    $redis_auth.set("jwt:#{payload['jti']}", 'revoked') # Simulate that the JWT exists
-    $redis_auth.set("jwt:#{payload2['jti']}", 'revoked') # Simulate that the JWT exists
+    $redis_auth.sadd("jwt:#{payload['sub']}", payload['jti']) # Simulate that the JWT exists
   end
 
   describe '.jwt_revoked?' do
     context 'when the JWT has been revoked' do
       it 'returns true' do
-        $redis_auth.del("jwt:#{payload['jti']}") # Simulate revocation
-
+        $redis_auth.srem("jwt:#{payload['sub']}", payload['jti'])
         expect(described_class.jwt_revoked?(payload, user)).to be true
       end
     end
@@ -52,7 +49,7 @@ RSpec.describe Devise::Jwt::RevocationStrategies::Redis do
     it 'revokes the JWT and logs the revocation' do
       described_class.revoke_jwt(payload, user)
 
-      expect($redis_auth.exists("jwt:#{payload['jti']}")).to eq 0
+      expect($redis_auth.exists("jwt:#{payload['sub']}")).to eq 0
     end
 
     it 'revokes the nil JWT' do

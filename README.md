@@ -24,8 +24,8 @@ REDIS_AUTH_URL=redis://localhost:6379/0
 Setup your devise model:
 ```ruby
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
+  include Devise::Jwt::RevocationStrategies::Redis::JwtDispatcher
+
   devise :database_authenticatable, # your enabled modules
          :jwt_authenticatable, jwt_revocation_strategy: Devise::Jwt::RevocationStrategies::Redis
 end
