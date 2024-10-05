@@ -12,21 +12,20 @@ module Devise
             def on_jwt_dispatch(token, payload)
               raise ArgumentError, 'payload cannot be nil' if payload.nil?
 
-              jti = payload['jti']
-              save_token_in_redis(jti, payload['sub'], payload['exp'])
+              save_token_in_redis(payload)
             end
           end
 
           private
 
-          def save_token_in_redis(jti, user_id, exp)
-            raise ArgumentError, 'sub cannot be nil' if user_id.nil? || user_id.empty?
-            raise ArgumentError, 'jti cannot be nil' if jti.nil? || jti.empty?
-            raise ArgumentError, 'exp cannot be nil' if exp.nil?
+          def save_token_in_redis(payload)
+            raise ArgumentError, 'sub cannot be nil' if payload['sub'].blank?
+            raise ArgumentError, 'jti cannot be nil' if payload['jti'].blank?
+            raise ArgumentError, 'exp cannot be nil' if payload['exp'].blank?
 
-            redis_key = "jwt:#{user_id}"
-            $redis_auth.sadd(redis_key, jti)
-            $redis_auth.expireat(redis_key, exp)
+            redis_key = Devise::Jwt::RevocationStrategies::Redis::Generator.redis_key(payload)
+            $redis_auth.sadd(redis_key, "#{payload['jti']}:#{payload['d_name']}")
+            $redis_auth.expireat(redis_key, payload['exp'])
           end
         end
       end
